@@ -1,0 +1,259 @@
+body {
+  background: #121212;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.snapchat-app {
+  max-width: 430px;
+  margin: 0 auto;
+  background: #181818;
+  min-height: 100vh;
+  position: relative;
+  border-radius: 18px;
+  box-shadow: 0 2px 24px #2226 0;
+  overflow: hidden;
+}
+
+.snap-header {
+  background: #fffc00;
+  color: #181818;
+  padding: 1rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.5rem;
+  border-bottom: 2px solid #fff;
+}
+
+.stories-bar {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 1rem;
+  background: #222;
+}
+
+.story-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 72px;
+}
+
+.story-avatar img {
+  border: 3px solid #fffc00;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  margin-bottom: 0.5em;
+}
+
+.story-avatar span {
+  font-size: 0.85em;
+}
+
+.chat-list {
+  padding: 1rem;
+  background: #181818;
+  min-height: 320px;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+  background: #222;
+  margin-bottom: 1em;
+  padding: 0.7em 1em;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.chat-item:hover {
+  background: #333;
+}
+
+.chat-item img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-user {
+  font-weight: bold;
+  color: #fffc00;
+}
+
+.chat-message-preview {
+  display: block;
+  color: #ccc;
+  font-size: 0.92em;
+  margin-top: 0.2em;
+}
+
+.chat-window {
+  padding: 1rem;
+  min-height: 320px;
+}
+
+.back-btn {
+  background: #fffc00;
+  color: #222;
+  border: none;
+  border-radius: 8px;
+  padding: 0.3em 1em;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 0.5em;
+}
+
+.chat-with {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-bottom: 1em;
+}
+
+.chat-with img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.messages {
+  margin-bottom: 1em;
+  min-height: 120px;
+}
+
+.bubble {
+  padding: 0.7em 1.2em;
+  border-radius: 20px;
+  margin-bottom: 0.6em;
+  max-width: 70%;
+  word-break: break-word;
+  font-size: 1em;
+  display: inline-block;
+}
+
+.bubble.me {
+  background: #fffc00;
+  color: #222;
+  margin-left: auto;
+  text-align: right;
+}
+
+.bubble.them {
+  background: #333;
+  color: #fff;
+  margin-right: auto;
+  text-align: left;
+}
+
+.chat-input-bar {
+  display: flex;
+  gap: 0.5em;
+  background: #222;
+  padding: 0.6em 0.6em;
+  border-radius: 10px;
+}
+
+.chat-input-bar input {
+  flex: 1;
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7em;
+  font-size: 1em;
+}
+
+.chat-input-bar button {
+  padding: 0.7em 1.2em;
+  background: #fffc00;
+  color: #222;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.profile-page {
+  text-align: center;
+  padding: 2em 1em;
+}
+
+.profile-avatar {
+  border: 4px solid #fffc00;
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+}
+
+.profile-page h2 {
+  margin: 1em 0 0.4em;
+}
+
+.profile-page button {
+  background: #fffc00;
+  color: #222;
+  border: none;
+  border-radius: 10px;
+  padding: 0.9em 2em;
+  font-weight: bold;
+  margin-top: 1em;
+  cursor: pointer;
+}
+
+.snap-btn {
+  position: fixed;
+  left: 50%;
+  bottom: 68px;
+  transform: translateX(-50%);
+  background: #fffc00;
+  color: #222;
+  border: none;
+  border-radius: 50%;
+  font-size: 2.1em;
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px #fffc0055;
+  cursor: pointer;
+  z-index: 100;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 100%;
+  max-width: 430px;
+  background: #222;
+  display: flex;
+  justify-content: space-around;
+  border-top: 2px solid #181818;
+  padding: 0.5em 0;
+  z-index: 99;
+}
+
+.bottom-nav button {
+  background: none;
+  border: none;
+  color: #fffc00;
+  font-size: 1.7em;
+  padding: 0.3em 0.8em;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.bottom-nav button.active {
+  opacity: 1;
+  border-bottom: 3px solid #fffc00;
+}
