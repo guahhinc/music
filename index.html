@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#000000">
-    <!-- App Icon (Red 'G' logo) -->
     <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Guahh&background=FA233B&color=fff&size=512&font-size=0.5&length=1">
     
     <!-- LIBRARIES -->
@@ -26,7 +25,7 @@
             background-color: #000; 
             color: #fff; 
             -webkit-tap-highlight-color: transparent; 
-            overscroll-behavior-y: none; /* Disables pull-to-refresh feel */
+            overscroll-behavior-y: none;
         }
         
         ::-webkit-scrollbar { width: 0px; background: transparent; }
@@ -44,7 +43,7 @@
             backdrop-filter: blur(40px);
         }
         
-        /* Custom Range Slider */
+        /* Range Slider */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%;
@@ -58,10 +57,14 @@
         .slide-up { animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .playing-bar { width: 3px; background-color: #FA233B; animation: bounce 1s infinite ease-in-out; }
+        /* Equalizer Animation */
+        .playing-icon { display: flex; align-items: flex-end; height: 12px; width: 14px; gap: 2px; flex-shrink: 0; }
+        .playing-bar { width: 3px; background-color: #FA233B; animation: bounce 1s infinite ease-in-out; border-radius: 1px; }
+        .playing-bar:nth-child(1) { height: 60%; animation-delay: 0s; }
+        .playing-bar:nth-child(2) { height: 100%; animation-delay: 0.2s; }
+        .playing-bar:nth-child(3) { height: 40%; animation-delay: 0.4s; }
         @keyframes bounce { 0%, 100% { height: 40%; } 50% { height: 100%; } }
 
-        /* Safe Areas for iPhone X+ */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
         .pt-safe { padding-top: env(safe-area-inset-top); }
     </style>
@@ -71,13 +74,10 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- CONFIGURATION ---
         const SPREADSHEET_ID = "15QpTb5ieYqRoP6LuRKxMnzHysdSY0lXC13M_NseIkHQ"; 
         const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzv2chmB6Nw8e0MXDpSANpAEuF71rWD7vF0Tr8MQxUQhTzppFyxE81eJNTRiGLU8PQ1Ow/exec";
-        
         const GIDS = { songs: "0", albums: "923389982", artists: "1359156026", users: "490485784", json: "1019835850" };
 
-        // --- ICONS ---
         const Icon = ({ path, size=20, className="", fill="none" }) => (
             <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
         );
@@ -101,7 +101,6 @@
             Shuffle: (p) => <Icon {...p} path={<><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></>} />
         };
 
-        // --- APP LOGIC ---
         const GuahhApp = () => {
             const [db, setDb] = React.useState({ songs: [], albums: [], artists: [], users: [], userJson: [] });
             const [status, setStatus] = React.useState('loading'); 
@@ -119,12 +118,14 @@
             const [isShuffle, setIsShuffle] = React.useState(false);
             const [volume, setVolume] = React.useState(1);
             
+            // Scrubbing
             const [currentTime, setCurrentTime] = React.useState(0);
             const [duration, setDuration] = React.useState(0);
+            const [isScrubbing, setIsScrubbing] = React.useState(false);
+            const [scrubValue, setScrubValue] = React.useState(0);
             
             const audioRef = React.useRef(new Audio());
 
-            // --- DATA LOADING ---
             React.useEffect(() => {
                 const fetchTab = (gid) => `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=tsv&gid=${gid}`;
                 const parseTSV = (url) => new Promise((resolve, reject) => {
@@ -173,7 +174,6 @@
                 }).catch(err => { console.error(err); setErrorMsg(err.toString()); setStatus('error'); });
             }, []);
 
-            // --- AUDIO ENGINE ---
             const getPlayableUrl = (url) => {
                 if (!url) return '';
                 let cleanUrl = url.trim();
@@ -214,16 +214,28 @@
                  playSong(queue[prevIndex]);
             };
 
-            const handleSeek = (e) => {
-                const newTime = e.target.value;
-                audioRef.current.currentTime = newTime;
-                setCurrentTime(newTime);
+            // --- FIXED SCRUBBING LOGIC ---
+            const handleScrubStart = (e) => {
+                setIsScrubbing(true);
+                setScrubValue(Number(e.target.value));
             };
 
-            // Audio Listeners & BACKGROUND LOGIC
+            const handleScrubMove = (e) => {
+                setScrubValue(Number(e.target.value));
+            };
+
+            const handleScrubEnd = (e) => {
+                const newTime = Number(e.target.value);
+                audioRef.current.currentTime = newTime;
+                setCurrentTime(newTime);
+                setIsScrubbing(false);
+            };
+
             React.useEffect(() => {
                 audioRef.current.crossOrigin = "anonymous";
-                const onTimeUpdate = () => setCurrentTime(audioRef.current.currentTime);
+                const onTimeUpdate = () => {
+                    if (!isScrubbing) setCurrentTime(audioRef.current.currentTime);
+                };
                 const onLoadedMetadata = () => setDuration(audioRef.current.duration);
                 const onEnded = () => playNext();
                 
@@ -231,7 +243,6 @@
                 audioRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
                 audioRef.current.addEventListener('ended', onEnded);
                 
-                // BACKGROUND PLAY RESTRICTION FOR FREE USERS
                 const handleVisibilityChange = () => {
                     if (document.hidden && currentUser && currentUser.subscription_status !== 'active' && isPlaying) {
                         audioRef.current.pause();
@@ -246,9 +257,8 @@
                     audioRef.current.removeEventListener('ended', onEnded);
                     document.removeEventListener("visibilitychange", handleVisibilityChange);
                 };
-            }, [currentSong, queue, isShuffle, currentUser, isPlaying]);
+            }, [currentSong, queue, isShuffle, currentUser, isPlaying, isScrubbing]);
 
-            // LOCK SCREEN CONTROLS (Media Session API)
             React.useEffect(() => {
                 if (currentSong && 'mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
@@ -274,16 +284,9 @@
                 }
             }, [currentSong]);
 
-            // --- NAVIGATION ---
-            const openArtist = (artistObj) => {
-                if(artistObj) { setSelectedItem(artistObj); setActiveTab('artist-view'); }
-            };
+            const openArtist = (artistObj) => { if(artistObj) { setSelectedItem(artistObj); setActiveTab('artist-view'); } };
+            const openAlbum = (albumObj) => { if(albumObj) { setSelectedItem(albumObj); setActiveTab('album-view'); } };
 
-            const openAlbum = (albumObj) => {
-                if(albumObj) { setSelectedItem(albumObj); setActiveTab('album-view'); }
-            };
-
-            // --- SYNC ---
             const trackPlay = (song) => {
                 if(!currentUser) return;
                 const prevHistory = userBlob.history || [];
@@ -316,7 +319,6 @@
                 syncToCloud({ ...userBlob, favorites: newFavs });
             };
 
-            // --- HELPERS & AUTH ---
             const formatTime = (time) => {
                 if(isNaN(time)) return "0:00";
                 const m = Math.floor(time / 60);
@@ -337,7 +339,6 @@
             
             const handleLogout = () => { localStorage.removeItem('guahh_user'); window.location.reload(); };
 
-            // --- COMPONENTS ---
             const SongRow = ({ song, index, showAlbum = true, contextQueue }) => {
                 const isCurrent = currentSong && currentSong.id === song.id;
                 const isFav = (userBlob.favorites || []).includes(song.id);
@@ -345,7 +346,7 @@
                     <div onClick={() => playSong(song, contextQueue)} className={`flex items-center p-2 rounded-lg cursor-pointer group transition border-b border-transparent ${isCurrent ? 'bg-[#1c1c1e]' : 'hover:bg-[#1c1c1e] hover:border-[#333]'}`}>
                         <div className="w-8 text-xs text-gray-500 text-center flex-shrink-0 flex justify-center">
                             {isCurrent && isPlaying ? (
-                                <div className="playing-icon" style={{height:'12px',gap:'2px'}}><div className="playing-bar" style={{width:'3px',backgroundColor:'#FA233B'}}></div><div className="playing-bar" style={{width:'3px',backgroundColor:'#FA233B'}}></div><div className="playing-bar" style={{width:'3px',backgroundColor:'#FA233B'}}></div></div>
+                                <div className="playing-icon"><div className="playing-bar"></div><div className="playing-bar"></div><div className="playing-bar"></div></div>
                             ) : <span className="group-hover:hidden">{index + 1}</span>}
                             <Icons.Play size={12} className="hidden group-hover:block text-white fill-white"/>
                         </div>
@@ -369,7 +370,6 @@
                 </button>
             );
 
-            // --- RENDER ---
             if (status === 'loading') return <div className="h-screen flex flex-col items-center justify-center bg-black text-white"><div className="animate-spin text-[#FA233B] mb-4"><Icons.Music size={48}/></div></div>;
             if (status === 'error') return <div className="h-screen flex flex-col items-center justify-center bg-black text-white p-6 text-center"><Icons.Alert size={48} className="text-red-500 mx-auto mb-4"/><p>{errorMsg}</p></div>;
 
@@ -395,7 +395,6 @@
                 <div className="flex h-screen overflow-hidden bg-black text-white pt-safe">
                     {currentUser && currentUser.subscription_status !== 'active' && <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white text-xs font-bold text-center py-1 z-50 pt-safe">Free Plan • Upgrade for Background Play</div>}
 
-                    {/* DESKTOP SIDEBAR */}
                     <div className="hidden md:flex w-64 bg-[#121212] border-r border-[#222] flex-col pt-8 px-4 pb-24">
                         <div className="px-2 mb-8 flex items-center gap-2 text-[#FA233B]"><Icons.Music size={24}/> <span className="text-white font-bold text-xl">Guahh</span></div>
                         <nav className="space-y-1">
@@ -421,7 +420,6 @@
                         </div>
                     </div>
 
-                    {/* MAIN CONTENT */}
                     <div className="flex-1 overflow-y-auto bg-black pb-40 md:pb-24 pt-8">
                         {activeTab === 'listen-now' && (
                             <div className="p-6 md:p-10 space-y-10 fade-in">
@@ -510,7 +508,6 @@
                                         <h2 className="text-sm font-bold uppercase text-white opacity-80 mb-1">Album</h2>
                                         <h1 className="text-3xl md:text-5xl font-extrabold mb-2 tracking-tight">{selectedItem.album_name}</h1>
                                         <div className="flex items-center justify-center md:justify-start gap-2 text-sm font-bold text-gray-300">
-                                            {/* MAKE ARTIST CLICKABLE */}
                                             <span onClick={() => {
                                                 const art = db.artists.find(ar => ar.artist_name === selectedItem.artist_name);
                                                 if(art) openArtist(art);
@@ -535,12 +532,22 @@
                                 <div className="p-6 md:p-10">
                                     <h2 className="text-xl font-bold mb-4">Top Songs</h2>
                                     <div className="mb-10">{db.songs.filter(s => s.artist_name === selectedItem.artist_name).slice(0, 5).map((s, i, arr) => <SongRow key={s.id} song={s} index={i} contextQueue={arr} />)}</div>
+                                    
+                                    <h2 className="text-xl font-bold mb-4">Albums</h2>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                                        {db.albums.filter(a => a.artist_name === selectedItem.artist_name).map(a => (
+                                            <div key={a.album_name} onClick={() => openAlbum(a)} className="group cursor-pointer">
+                                                <div className="aspect-square bg-[#333] rounded-lg overflow-hidden mb-3 shadow-lg"><img src={a.cover_url} className="w-full h-full object-cover"/></div>
+                                                <div className="text-sm font-semibold truncate text-white">{a.album_name}</div>
+                                                <div className="text-xs text-gray-400 truncate">{a.year}</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* MOBILE NAV */}
                     <div className="md:hidden fixed bottom-0 w-full bg-[#1c1c1e]/95 backdrop-blur-xl border-t border-[#333] flex justify-around py-3 pb-safe z-40">
                         <BottomTab id="listen-now" icon={Icons.Home} label="Listen Now" />
                         <BottomTab id="browse" icon={Icons.Search} label="Browse" />
@@ -548,7 +555,6 @@
                         <BottomTab id="albums" icon={Icons.Disc} label="Albums" />
                     </div>
 
-                    {/* MINI PLAYER */}
                     <div onClick={() => setShowFullPlayer(true)} className={`fixed left-0 right-0 glass-panel z-50 flex items-center px-4 md:px-6 justify-between transition-all duration-300 ${activeTab==='login'?'hidden':'flex'} bottom-[60px] md:bottom-0 h-16 md:h-20 border-b md:border-b-0 border-[#333] cursor-pointer hover:bg-[#2c2c2e]`}>
                         <div className="flex-1 flex items-center gap-3 overflow-hidden">
                             {currentSong ? (
@@ -569,7 +575,6 @@
                         </div>
                     </div>
 
-                    {/* FULL SCREEN PLAYER MODAL */}
                     {showFullPlayer && currentSong && (
                         <div className="fixed inset-0 z-[60] glass-modal flex flex-col slide-up pt-safe">
                             <div className="flex justify-center pt-6 pb-2 relative">
@@ -592,8 +597,21 @@
                                     </button>
                                 </div>
 
-                                <div className="mb-2"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"/></div>
-                                <div className="flex justify-between text-xs text-gray-400 font-medium mb-8"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
+                                <div className="mb-2">
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max={duration || 0} 
+                                        value={isScrubbing ? scrubValue : currentTime} 
+                                        onMouseDown={handleScrubStart}
+                                        onTouchStart={handleScrubStart}
+                                        onChange={handleScrubMove}
+                                        onMouseUp={handleScrubEnd}
+                                        onTouchEnd={handleScrubEnd}
+                                        className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                </div>
+                                <div className="flex justify-between text-xs text-gray-400 font-medium mb-8"><span>{formatTime(isScrubbing ? scrubValue : currentTime)}</span><span>{formatTime(duration)}</span></div>
 
                                 <div className="flex items-center justify-between max-w-md mx-auto w-full mb-12">
                                     <button onClick={() => setIsShuffle(!isShuffle)} className={`text-gray-400 hover:text-white ${isShuffle ? 'text-[#FA233B]' : ''}`}><Icons.Shuffle size={24}/></button>
