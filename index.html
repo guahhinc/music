@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- PWA / APP SETTINGS -->
     <title>Guahh Music</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <!-- App Icon (Red 'G' logo) -->
+    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=Guahh&background=FA233B&color=fff&size=512&font-size=0.5&length=1">
     
-    <!-- TAILWIND CSS -->
+    <!-- LIBRARIES -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- REACT & BABEL -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -16,12 +21,19 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', -apple-system, sans-serif; background-color: #000; color: #fff; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background-color: #000; 
+            color: #fff; 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: none; /* Disables pull-to-refresh feel */
+        }
+        
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         
         /* Glassmorphism */
         .glass-panel {
-            background: rgba(28, 28, 30, 0.95);
+            background: rgba(28, 28, 30, 0.96);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid rgba(255,255,255,0.1);
@@ -32,30 +44,26 @@
             backdrop-filter: blur(40px);
         }
         
-        /* Sliders */
+        /* Custom Range Slider */
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%;
             background: #fff; margin-top: -4px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
         }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #333; border-radius: 2px; }
-        input[type=range]:focus::-webkit-slider-thumb { transform: scale(1.2); }
         
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Slide Up Animation for Player */
         .slide-up { animation: slideUp 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .playing-icon { display: flex; align-items: flex-end; height: 12px; gap: 2px; }
         .playing-bar { width: 3px; background-color: #FA233B; animation: bounce 1s infinite ease-in-out; }
-        .playing-bar:nth-child(1) { height: 60%; animation-delay: 0s; }
-        .playing-bar:nth-child(2) { height: 100%; animation-delay: 0.2s; }
-        .playing-bar:nth-child(3) { height: 40%; animation-delay: 0.4s; }
         @keyframes bounce { 0%, 100% { height: 40%; } 50% { height: 100%; } }
 
+        /* Safe Areas for iPhone X+ */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
     </style>
 </head>
 <body class="bg-black text-white selection:bg-[#FA233B] selection:text-white overflow-hidden">
@@ -99,21 +107,18 @@
             const [status, setStatus] = React.useState('loading'); 
             const [errorMsg, setErrorMsg] = React.useState('');
             const [currentUser, setCurrentUser] = React.useState(null);
-            const [userBlob, setUserBlob] = React.useState({ library: [], history: [], play_counts: {} });
+            const [userBlob, setUserBlob] = React.useState({ favorites: [], history: [], play_counts: {} });
             
-            // UI State
             const [activeTab, setActiveTab] = React.useState('login'); 
             const [selectedItem, setSelectedItem] = React.useState(null);
             const [showFullPlayer, setShowFullPlayer] = React.useState(false);
             
-            // Playback State
-            const [queue, setQueue] = React.useState([]); // List of songs to play from
+            const [queue, setQueue] = React.useState([]); 
             const [currentSong, setCurrentSong] = React.useState(null);
             const [isPlaying, setIsPlaying] = React.useState(false);
             const [isShuffle, setIsShuffle] = React.useState(false);
             const [volume, setVolume] = React.useState(1);
             
-            // Scrubber State
             const [currentTime, setCurrentTime] = React.useState(0);
             const [duration, setDuration] = React.useState(0);
             
@@ -151,7 +156,6 @@
                     });
                     setDb({ songs: enrichedSongs, albums: albumsRaw, artists: artistsRaw, users: usersRaw, userJson: jsonRaw });
                     
-                    // Auto Login
                     const savedUser = localStorage.getItem('guahh_user');
                     if (savedUser) {
                         try {
@@ -196,21 +200,17 @@
 
             const playNext = () => {
                 if (!queue.length) return;
-                
                 if (isShuffle) {
-                    const randomIndex = Math.floor(Math.random() * queue.length);
-                    playSong(queue[randomIndex]);
+                    playSong(queue[Math.floor(Math.random() * queue.length)]);
                 } else {
-                    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-                    const nextIndex = (currentIndex + 1) % queue.length;
+                    const nextIndex = (queue.findIndex(s => s.id === currentSong.id) + 1) % queue.length;
                     playSong(queue[nextIndex]);
                 }
             };
             
             const playPrev = () => {
                  if (!queue.length) return;
-                 const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-                 const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+                 const prevIndex = (queue.findIndex(s => s.id === currentSong.id) - 1 + queue.length) % queue.length;
                  playSong(queue[prevIndex]);
             };
 
@@ -220,10 +220,9 @@
                 setCurrentTime(newTime);
             };
 
-            // Audio Listeners
+            // Audio Listeners & BACKGROUND LOGIC
             React.useEffect(() => {
                 audioRef.current.crossOrigin = "anonymous";
-                
                 const onTimeUpdate = () => setCurrentTime(audioRef.current.currentTime);
                 const onLoadedMetadata = () => setDuration(audioRef.current.duration);
                 const onEnded = () => playNext();
@@ -232,12 +231,38 @@
                 audioRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
                 audioRef.current.addEventListener('ended', onEnded);
                 
+                // BACKGROUND PLAY RESTRICTION FOR FREE USERS
+                const handleVisibilityChange = () => {
+                    if (document.hidden && currentUser && currentUser.subscription_status !== 'active' && isPlaying) {
+                        audioRef.current.pause();
+                        setIsPlaying(false);
+                    }
+                };
+                document.addEventListener("visibilitychange", handleVisibilityChange);
+                
                 return () => {
                     audioRef.current.removeEventListener('timeupdate', onTimeUpdate);
                     audioRef.current.removeEventListener('loadedmetadata', onLoadedMetadata);
                     audioRef.current.removeEventListener('ended', onEnded);
+                    document.removeEventListener("visibilitychange", handleVisibilityChange);
                 };
-            }, [currentSong, queue, isShuffle]); // Re-bind when queue logic changes
+            }, [currentSong, queue, isShuffle, currentUser, isPlaying]);
+
+            // LOCK SCREEN CONTROLS (Media Session API)
+            React.useEffect(() => {
+                if (currentSong && 'mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: currentSong.title,
+                        artist: currentSong.artist_name,
+                        album: currentSong.album_name,
+                        artwork: [{ src: currentSong.cover_url, sizes: '512x512', type: 'image/jpeg' }]
+                    });
+                    navigator.mediaSession.setActionHandler('play', () => { audioRef.current.play(); setIsPlaying(true); });
+                    navigator.mediaSession.setActionHandler('pause', () => { audioRef.current.pause(); setIsPlaying(false); });
+                    navigator.mediaSession.setActionHandler('previoustrack', playPrev);
+                    navigator.mediaSession.setActionHandler('nexttrack', playNext);
+                }
+            }, [currentSong]);
 
             React.useEffect(() => {
                 if (currentSong) {
@@ -249,7 +274,14 @@
                 }
             }, [currentSong]);
 
-            React.useEffect(() => { audioRef.current.volume = volume; }, [volume]);
+            // --- NAVIGATION ---
+            const openArtist = (artistObj) => {
+                if(artistObj) { setSelectedItem(artistObj); setActiveTab('artist-view'); }
+            };
+
+            const openAlbum = (albumObj) => {
+                if(albumObj) { setSelectedItem(albumObj); setActiveTab('album-view'); }
+            };
 
             // --- SYNC ---
             const trackPlay = (song) => {
@@ -267,30 +299,29 @@
                 try {
                     await fetch(APPS_SCRIPT_URL, {
                         method: 'POST', mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                         body: JSON.stringify({ user_id: currentUser.user_id, data: newBlob })
                     });
                 } catch(e) { console.error(e); }
             };
 
-            const toggleLibrary = (e, songId) => {
+            const toggleFavorite = (e, songId) => {
                 e && e.stopPropagation();
-                let newLib = userBlob.library || [];
-                // FREE TIER CHECK
-                if (currentUser.subscription_status !== 'active' && !newLib.includes(songId) && newLib.length >= 5) {
+                let newFavs = userBlob.favorites || [];
+                if (currentUser.subscription_status !== 'active' && !newFavs.includes(songId) && newFavs.length >= 5) {
                     alert("Free Limit Reached! Upgrade to Premium."); return;
                 }
-                if (newLib.includes(songId)) newLib = newLib.filter(id => id !== songId);
-                else newLib = [...newLib, songId];
-                syncToCloud({ ...userBlob, library: newLib });
+                if (newFavs.includes(songId)) newFavs = newFavs.filter(id => id !== songId);
+                else newFavs = [...newFavs, songId];
+                syncToCloud({ ...userBlob, favorites: newFavs });
             };
 
-            // --- HELPERS ---
+            // --- HELPERS & AUTH ---
             const formatTime = (time) => {
                 if(isNaN(time)) return "0:00";
-                const minutes = Math.floor(time / 60);
-                const seconds = Math.floor(time % 60);
-                return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                const m = Math.floor(time / 60);
+                const s = Math.floor(time % 60);
+                return `${m}:${s < 10 ? '0' : ''}${s}`;
             };
             
             const handleLogin = (u, p) => {
@@ -309,14 +340,13 @@
             // --- COMPONENTS ---
             const SongRow = ({ song, index, showAlbum = true, contextQueue }) => {
                 const isCurrent = currentSong && currentSong.id === song.id;
+                const isFav = (userBlob.favorites || []).includes(song.id);
                 return (
                     <div onClick={() => playSong(song, contextQueue)} className={`flex items-center p-2 rounded-lg cursor-pointer group transition border-b border-transparent ${isCurrent ? 'bg-[#1c1c1e]' : 'hover:bg-[#1c1c1e] hover:border-[#333]'}`}>
                         <div className="w-8 text-xs text-gray-500 text-center flex-shrink-0 flex justify-center">
                             {isCurrent && isPlaying ? (
-                                <div className="playing-icon"><div className="playing-bar"></div><div className="playing-bar"></div><div className="playing-bar"></div></div>
-                            ) : (
-                                <span className="group-hover:hidden">{index + 1}</span>
-                            )}
+                                <div className="playing-icon" style={{height:'12px',gap:'2px'}}><div className="playing-bar" style={{width:'3px',backgroundColor:'#FA233B'}}></div><div className="playing-bar" style={{width:'3px',backgroundColor:'#FA233B'}}></div><div className="playing-bar" style={{width:'3px',backgroundColor:'#FA233B'}}></div></div>
+                            ) : <span className="group-hover:hidden">{index + 1}</span>}
                             <Icons.Play size={12} className="hidden group-hover:block text-white fill-white"/>
                         </div>
                         <img src={song.cover_url} className="w-10 h-10 rounded shadow-sm mx-4 object-cover bg-[#333]"/>
@@ -325,8 +355,8 @@
                             <div className="text-xs text-gray-400 truncate">{song.artist_name}</div>
                         </div>
                         {showAlbum && <div className="text-xs text-gray-500 w-32 truncate hidden md:block mr-4">{song.album_name}</div>}
-                        <button onClick={(e) => toggleLibrary(e, song.id)} className="p-2 text-gray-500 hover:text-[#FA233B] transition">
-                            <Icons.Heart size={16} className={(userBlob.library||[]).includes(song.id) ? "fill-[#FA233B] text-[#FA233B]" : ""}/>
+                        <button onClick={(e) => toggleFavorite(e, song.id)} className="p-2 text-gray-500 hover:text-[#FA233B] transition">
+                            <Icons.Heart size={16} className={isFav ? "fill-[#FA233B] text-[#FA233B]" : ""}/>
                         </button>
                     </div>
                 );
@@ -358,13 +388,12 @@
                 </div>
             );
 
-            // Calculate current view lists for queueing
-            const libraryList = db.songs.filter(s => (userBlob.library||[]).includes(s.id));
+            const libraryList = db.songs.filter(s => (userBlob.favorites||[]).includes(s.id));
             const browseList = db.songs;
 
             return (
-                <div className="flex h-screen overflow-hidden bg-black text-white">
-                    {currentUser && currentUser.subscription_status !== 'active' && <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white text-xs font-bold text-center py-1 z-50">Free Plan • Upgrade for Unlimited</div>}
+                <div className="flex h-screen overflow-hidden bg-black text-white pt-safe">
+                    {currentUser && currentUser.subscription_status !== 'active' && <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white text-xs font-bold text-center py-1 z-50 pt-safe">Free Plan • Upgrade for Background Play</div>}
 
                     {/* DESKTOP SIDEBAR */}
                     <div className="hidden md:flex w-64 bg-[#121212] border-r border-[#222] flex-col pt-8 px-4 pb-24">
@@ -401,7 +430,7 @@
                                     <h2 className="text-xl font-bold mb-4 border-b border-[#333] pb-2 text-gray-200">Top Albums</h2>
                                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
                                         {db.albums.slice(0,5).map(a => (
-                                            <div key={a.album_name} onClick={() => {setSelectedItem(a); setActiveTab('album-view')}} className="group cursor-pointer">
+                                            <div key={a.album_name} onClick={() => openAlbum(a)} className="group cursor-pointer">
                                                 <div className="aspect-square bg-[#333] rounded-lg overflow-hidden mb-3 shadow-lg"><img src={a.cover_url} className="w-full h-full object-cover"/></div>
                                                 <div className="text-sm font-semibold truncate text-white">{a.album_name}</div>
                                                 <div className="text-xs text-gray-400 truncate">{a.artist_name}</div>
@@ -449,7 +478,7 @@
                                  <h1 className="text-3xl font-bold mb-8">Albums</h1>
                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
                                     {db.albums.map(a => (
-                                        <div key={a.album_name} onClick={() => {setSelectedItem(a); setActiveTab('album-view')}} className="group cursor-pointer">
+                                        <div key={a.album_name} onClick={() => openAlbum(a)} className="group cursor-pointer">
                                             <div className="aspect-square bg-[#333] rounded-lg overflow-hidden mb-3 shadow-lg"><img src={a.cover_url} className="w-full h-full object-cover"/></div>
                                             <div className="text-sm font-semibold truncate text-white">{a.album_name}</div>
                                             <div className="text-xs text-gray-400 truncate">{a.artist_name}</div>
@@ -464,7 +493,7 @@
                                  <h1 className="text-3xl font-bold mb-8">Artists</h1>
                                  <div className="grid grid-cols-3 md:grid-cols-6 gap-6">
                                     {db.artists.map(a => (
-                                        <div key={a.artist_name} onClick={() => {setSelectedItem(a); setActiveTab('artist-view')}} className="group cursor-pointer text-center">
+                                        <div key={a.artist_name} onClick={() => openArtist(a)} className="group cursor-pointer text-center">
                                             <div className="aspect-square bg-[#333] rounded-full overflow-hidden mb-3 shadow-lg mx-auto border-2 border-transparent group-hover:border-[#FA233B] transition"><img src={a.artist_image} className="w-full h-full object-cover"/></div>
                                             <div className="text-sm font-semibold truncate text-white">{a.artist_name}</div>
                                         </div>
@@ -481,7 +510,12 @@
                                         <h2 className="text-sm font-bold uppercase text-white opacity-80 mb-1">Album</h2>
                                         <h1 className="text-3xl md:text-5xl font-extrabold mb-2 tracking-tight">{selectedItem.album_name}</h1>
                                         <div className="flex items-center justify-center md:justify-start gap-2 text-sm font-bold text-gray-300">
-                                            <span>{selectedItem.artist_name}</span> <span className="text-gray-500">• {selectedItem.year || '2023'}</span>
+                                            {/* MAKE ARTIST CLICKABLE */}
+                                            <span onClick={() => {
+                                                const art = db.artists.find(ar => ar.artist_name === selectedItem.artist_name);
+                                                if(art) openArtist(art);
+                                            }} className="cursor-pointer hover:text-white underline decoration-gray-500 hover:decoration-white transition">{selectedItem.artist_name}</span> 
+                                            <span className="text-gray-500">• {selectedItem.year || '2023'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -537,7 +571,7 @@
 
                     {/* FULL SCREEN PLAYER MODAL */}
                     {showFullPlayer && currentSong && (
-                        <div className="fixed inset-0 z-[60] glass-modal flex flex-col slide-up">
+                        <div className="fixed inset-0 z-[60] glass-modal flex flex-col slide-up pt-safe">
                             <div className="flex justify-center pt-6 pb-2 relative">
                                 <button onClick={() => setShowFullPlayer(false)} className="bg-[#333] w-12 h-1 rounded-full opacity-50"></button>
                                 <button onClick={() => setShowFullPlayer(false)} className="absolute right-6 top-6 text-gray-400"><Icons.ChevronDown size={32}/></button>
@@ -553,21 +587,14 @@
                                         <h2 className="text-2xl md:text-3xl font-bold text-white mb-1 line-clamp-1">{currentSong.title}</h2>
                                         <h3 className="text-lg text-gray-400 md:text-xl line-clamp-1">{currentSong.artist_name}</h3>
                                     </div>
-                                    <button onClick={(e) => toggleLibrary(e, currentSong.id)} className="p-3 bg-[#1c1c1e] rounded-full text-gray-400">
-                                         <Icons.Heart size={24} className={(userBlob.library||[]).includes(currentSong.id) ? "fill-[#FA233B] text-[#FA233B]" : ""}/>
+                                    <button onClick={(e) => toggleFavorite(e, currentSong.id)} className="p-3 bg-[#1c1c1e] rounded-full text-gray-400">
+                                         <Icons.Heart size={24} className={(userBlob.favorites||[]).includes(currentSong.id) ? "fill-[#FA233B] text-[#FA233B]" : ""}/>
                                     </button>
                                 </div>
 
-                                {/* Scrubber */}
-                                <div className="mb-2">
-                                    <input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"/>
-                                </div>
-                                <div className="flex justify-between text-xs text-gray-400 font-medium mb-8">
-                                    <span>{formatTime(currentTime)}</span>
-                                    <span>{formatTime(duration)}</span>
-                                </div>
+                                <div className="mb-2"><input type="range" min="0" max={duration || 0} value={currentTime} onChange={handleSeek} className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"/></div>
+                                <div className="flex justify-between text-xs text-gray-400 font-medium mb-8"><span>{formatTime(currentTime)}</span><span>{formatTime(duration)}</span></div>
 
-                                {/* Controls */}
                                 <div className="flex items-center justify-between max-w-md mx-auto w-full mb-12">
                                     <button onClick={() => setIsShuffle(!isShuffle)} className={`text-gray-400 hover:text-white ${isShuffle ? 'text-[#FA233B]' : ''}`}><Icons.Shuffle size={24}/></button>
                                     <button onClick={playPrev} className="text-white hover:scale-110 transition"><Icons.SkipBack size={42} fill="white"/></button>
@@ -575,7 +602,7 @@
                                         {isPlaying ? <Icons.Pause size={32} fill="black"/> : <Icons.Play size={32} fill="black" className="ml-1"/>}
                                     </button>
                                     <button onClick={playNext} className="text-white hover:scale-110 transition"><Icons.SkipForward size={42} fill="white"/></button>
-                                    <div className="w-6"></div> {/* Spacer for balance */}
+                                    <div className="w-6"></div>
                                 </div>
                             </div>
                         </div>
